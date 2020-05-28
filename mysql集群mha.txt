@@ -1,0 +1,88 @@
+一、准备好4台虚拟机
+环境：sentos7
+准备安装包：
+mha4mysql-manager-0.58-0.el7.centos.noarch.rpm
+mha4mysql-node-0.58-0.el7.centos.noarch.rpm
+mysql-5.7.28-1.el7.x86_64.rpm-bundle.tar
+mysql-community-client-5.7.28-1.el7.x86_64.rpm
+mysql-community-common-5.7.28-1.el7.x86_64.rpm
+mysql-community-devel-5.7.28-1.el7.x86_64.rpm
+mysql-community-embedded-5.7.28-1.el7.x86_64.rpm
+mysql-community-embedded-compat-5.7.28-1.el7.x86_64.rpm
+mysql-community-embedded-devel-5.7.28-1.el7.x86_64.rpm
+mysql-community-libs-5.7.28-1.el7.x86_64.rpm
+mysql-community-libs-compat-5.7.28-1.el7.x86_64.rpm
+mysql-community-server-5.7.28-1.el7.x86_64.rpm
+mysql-community-test-5.7.28-1.el7.x86_64.rpm
+mysql-proxy-0.8.5-linux-el6-x86-64bit.tar.gz
+MHA集群架构：
+proxy 192.168.80.133:4040
+master 192.168.80.129:3306
+slave 192.168.80.130:3306
+slave 192.168.80.132:3306
+二、开始安装
+1、检查系统自带的mariadb，并卸载
+rpm -qa|grep mariadb
+如果有，就卸载rpm -e mariadb-libs-5.5.41-2.el7_0.x86_64 --nodeps
+2、安装mysql相关rpm包
+rpm -ivh mysql-community-common-5.7.28-1.el7.x86_64.rpm
+rpm -ivh mysql-community-libs-5.7.28-1.el7.x86_64.rpm
+rpm -ivh mysql-community-libs-compat-5.7.28-1.el7.x86_64.rpm
+rpm -ivh mysql-community-client-5.7.28-1.el7.x86_64.rpm
+rpm -ivh mysql-community-server-5.7.28-1.el7.x86_64.rpm
+rpm -ivh mysql-community-devel-5.7.28-1.el7.x86_64.rpm
+3、初始化mysql数据库
+mysqld --initalize --user=mysql
+4、查看初始root密码
+cat /var/log/mysqld.log
+5、启动mysql服务
+systemctl start mysqld.service
+6、查看状态
+systemctl status mysqld.service
+7、登陆mysql
+mysql -uroot -p 输入秘密
+8、修改密码
+set password=password('root');
+9、重新登mysql，验证密码修改成功
+10、关闭防火墙
+systemctl stop iptables
+systemctl stop firewalld
+systemctl disable firewalld.service
+
+======重复以上操作，准备好三台mysql服务
+
+11、开始主从配置
+master配置：
+vim /etc/my.cnf
+log_bin=mysql-bin
+server-id=1
+sync-binlog=1
+binlog-ignore-db=performance_schema
+binlog-ignore-db=information_schema
+binlog-ignore-db=sys
+relay_log=mysql-relay-bin
+log_slave_updates=1
+
+slave1配置：（slave1可以和master主从互备）
+server-id=2
+relay_log=mysql-relay-bin
+read_only=1
+log-bin=mysql-bin
+sync-binlog=1
+log-slave-updates=1
+
+slave2配置：
+server-id=3
+relay_log=mysql-relay-bin
+read_only=1
+
+12、赋权
+192.168.80.129
+change master to master_host='192.168.80.130',master_port=3306,master_user='root',master_password='root',master_log_file='mysql-bin.000002',master_log_pos=869;
+192.168.80.130
+change master to master_host='192.168.80.129',master_port=3306,master_user='root',master_password='root',master_log_file='mysql-bin.000002',master_log_pos=869;
+192.168.80.132
+change master to master_host='192.168.80.129',master_port=3306,master_user='root',master_password='root',master_log_file='mysql-bin.000002',master_log_pos=869;
+
+13、刷新权限
+flush 
