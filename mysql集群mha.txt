@@ -128,9 +128,26 @@ grep Semi-sync /var/log/mysqld.log
 	a.解压
 	tar -zxvf mysql-proxy-0.8.5-linux-el6-x86-64bit.tar.gz
 	b.添加配置
-	
-	c.修改脚本
-	
-	d.启动代理服务
+	vim /etc/mysql-proxy.cnf
+	[mysql-proxy]
+	user=root
+	admin-username=root
+	admin-password=root
+	proxy-address=192.168.80.133:4040
+	proxy-backend-addresses=192.168.80.129:3306,192.168.80.130:3306
+	proxy-read-only-backend-addresses=192.168.80.130:3306,192.168.80.132:3306,192.168.80.129:3306
+	proxy-lua-script=/root/mysql-proxy-0.8.5-linux-el6-x86-64bit/share/doc/mysql-proxy/rw-splitting.lua
+	log-file=/var/log/mysql-proxy.log
+	log-level=debug
+	daemon=true
+	keepalive=true
+	c.添加权限
+	chmod 660 /etc/mysql-proxy.cnf
+	d.修改脚本
+	vim mysql-proxy-0.8.5-linux-el6-x86-64bit/share/doc/mysql-proxy/rw-splitting.lua
+	min_idle_connections = 1
+	e.启动代理服务
+	cd mysql-proxy-0.8.5-linux-el6-x86-64bit/bin
+	./mysql-proxy --defaults-file=/etc/mysql-proxy.cnf
 	
 19、插入数据，验证MHA集群是否搭建成功
